@@ -8,6 +8,7 @@ Reusable Android development skills for AI coding agents. Each skill lives in it
 | --- | --- |
 | [`r8-dex-optimization`](r8-dex-optimization/SKILL.md) | Diagnose and improve R8/DEX optimization configuration for Android apps. |
 | [`aab-dex-checker`](aab-dex-checker/SKILL.md) | Audit Android App Bundles for DEX size and Android Vitals optimization signals. |
+| [`android-video-automation`](android-video-automation/SKILL.md) | Explore Android apps, interact with devices or emulators, and record UI flows as videos. |
 
 ## Install a skill
 
@@ -64,6 +65,7 @@ Skills reutilizables para desarrollo Android con agentes de programación. Cada 
 | --- | --- |
 | [`r8-dex-optimization`](r8-dex-optimization/SKILL.md) | Diagnostica y mejora la configuración de optimización R8/DEX en aplicaciones Android. |
 | [`aab-dex-checker`](aab-dex-checker/SKILL.md) | Audita Android App Bundles por tamaño DEX e indicadores de optimización de Android Vitals. |
+| [`android-video-automation`](android-video-automation/SKILL.md) | Explora aplicaciones Android, interactúa con dispositivos o emuladores y graba flujos de interfaz en video. |
 
 ## Instalar una skill
 
