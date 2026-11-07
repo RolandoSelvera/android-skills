@@ -39,7 +39,7 @@ mkdir -p .agents/skills
 cp -R r8-dex-optimization .agents/skills/
 ```
 
-Replace `.agents/skills/` with the desired agent-specific path from the table to install for that agent only. Gemini CLI also provides `gemini skills install` and `gemini skills list`; see its documentation for usage.
+Replace `.agents/skills/` with the desired agent-specific path from the table to install for that agent only.
 
 ### Android Studio and Android CLI
 
@@ -121,7 +121,7 @@ mkdir -p .agents/skills
 cp -R r8-dex-optimization .agents/skills/
 ```
 
-Para instalarla solo para un agente, sustituye `.agents/skills/` por la ruta específica de la tabla. Gemini CLI también ofrece `gemini skills install` y `gemini skills list`; consulta su documentación para ver cómo usarlos.
+Para instalarla solo para un agente, sustituye `.agents/skills/` por la ruta específica de la tabla.
 
 ### Android Studio y Android CLI
 
