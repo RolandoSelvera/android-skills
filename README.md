@@ -10,7 +10,7 @@ Reusable Android development skills for AI coding agents. Each skill lives in it
 | [`aab-dex-checker`](aab-dex-checker/SKILL.md) | Audit Android App Bundles for DEX size and Android Vitals optimization signals. |
 | [`android-video-automation`](android-video-automation/SKILL.md) | Explore Android apps, interact with devices or emulators, and record UI flows as videos. |
 | [`database-export`](database-export/SKILL.md) | Export Room, SQLite, or Realm databases from an Android device or emulator to the developer's machine. |
-| [`android-navigation-map`](android-navigation-map/SKILL.md) | Map Android navigation in Mermaid or offline HTML, trace per-screen services and APIs, and drag cards to rearrange the diagram. |
+| [`android-navigation-map`](android-navigation-map/SKILL.md) | Map Android navigation in Mermaid or offline HTML, trace per-screen services and APIs, and drag cards to rearrange the diagram. See [README.md](android-navigation-map/README.md).|
 
 ## Install a skill
 
@@ -94,7 +94,7 @@ Skills reutilizables para desarrollo Android con agentes de programación. Cada 
 | [`aab-dex-checker`](aab-dex-checker/SKILL.md) | Audita Android App Bundles por tamaño DEX e indicadores de optimización de Android Vitals. |
 | [`android-video-automation`](android-video-automation/SKILL.md) | Explora aplicaciones Android, interactúa con dispositivos o emuladores y graba flujos de interfaz en video. |
 | [`database-export`](database-export/SKILL.md) | Exporta bases de datos Room, SQLite o Realm desde un dispositivo o emulador Android a la computadora del desarrollador. |
-| [`android-navigation-map`](android-navigation-map/SKILL.md) | Mapea la navegación Android en Mermaid o HTML sin conexión, rastrea servicios y APIs por pantalla y permite reordenar el diagrama arrastrando las tarjetas. |
+| [`android-navigation-map`](android-navigation-map/SKILL.md) | Mapea la navegación Android en Mermaid o HTML sin conexión, rastrea servicios y APIs por pantalla y permite reordenar el diagrama arrastrando las tarjetas. Consulta [README.md](android-navigation-map/README.md). |
 
 ## Instalar una skill
 
