@@ -1,0 +1,1785 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Android Navigation Map</title>
+<style>
+  :root {
+    --bg: #f8f9fa;
+    --surface: #ffffff;
+    --surface-2: #f1f3f4;
+    --text: #202124;
+    --muted: #5f6368;
+    --border: #dadce0;
+    --accent: #1a73e8;
+    --accent-soft: #e8f0fe;
+    --danger: #c5221f;
+    --shadow: 0 1px 2px rgba(60, 64, 67, .15), 0 1px 3px rgba(60, 64, 67, .1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #202124;
+      --surface: #292a2d;
+      --surface-2: #35363a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --border: #3c4043;
+      --accent: #8ab4f8;
+      --accent-soft: #1f3a5f;
+      --danger: #f28b82;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+  }
+  .app {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 390px;
+    height: 100vh;
+  }
+  .app.panel-hidden { grid-template-columns: minmax(0, 1fr); }
+  .app.panel-hidden .panel { display: none; }
+  .main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 18px 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  h1 { margin: 0; font-size: 18px; letter-spacing: -.2px; }
+  .muted { color: var(--muted); }
+  header p { margin: 3px 0 0; font-size: 12.5px; }
+  .stats { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .chip strong { color: var(--text); font-size: 12.5px; }
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .toolbar input[type="search"] {
+    flex: 1 1 220px;
+    min-width: 180px;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+  }
+  .toolbar input[type="search"]:focus,
+  .toolbar select:focus,
+  .toolbar button:focus-visible,
+  .check input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .toolbar select {
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+    color: var(--text);
+    font: inherit;
+    font-size: 12.5px;
+  }
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .check {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--muted);
+    font-size: 12px;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .check input { margin: 0; accent-color: var(--accent); }
+  .swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    border: 1.5px solid #5f6368;
+    background: #f1f3f4;
+  }
+  .swatch.type-activity { background: #e8f0fe; border-color: #1a73e8; }
+  .swatch.type-fragment { background: #e6f4ea; border-color: #137333; }
+  .swatch.type-compose { background: #f3e8fd; border-color: #8430ce; }
+  .swatch.type-dialog { background: #fef7e0; border-color: #b06000; }
+  .swatch.type-bottomSheet { background: #fce8e6; border-color: #c5221f; }
+  .swatch.type-navGraph { background: #f1f3f4; border-color: #5f6368; }
+  .swatch.type-external { background: #f1f3f4; border-color: #5f6368; }
+  @media (prefers-color-scheme: dark) {
+    .swatch.type-activity { background: #1f3a5f; border-color: #8ab4f8; }
+    .swatch.type-fragment { background: #1e3a2b; border-color: #81c995; }
+    .swatch.type-compose { background: #3a1f52; border-color: #d7aefb; }
+    .swatch.type-dialog { background: #4a3a12; border-color: #fdd663; }
+    .swatch.type-bottomSheet { background: #4a1f1c; border-color: #f28b82; }
+    .swatch.type-navGraph,
+    .swatch.type-external { background: #35363a; border-color: #9aa0a6; }
+  }
+  .toolbar button, .panel button {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+    color: var(--text);
+    font: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .toolbar button:hover, .panel button:hover { border-color: var(--accent); }
+  .toolbar button.primary { background: var(--accent-soft); border-color: var(--accent); }
+  .canvas-wrap {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  svg#canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+    touch-action: none;
+  }
+  svg#canvas.dragging { cursor: grabbing; }
+  .hint {
+    position: absolute;
+    left: 12px;
+    bottom: 10px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 11.5px;
+    pointer-events: none;
+    opacity: .92;
+  }
+  .empty {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    padding: 24px;
+    text-align: center;
+    color: var(--muted);
+  }
+  .empty h2 { margin: 0 0 8px; color: var(--text); font-size: 16px; }
+  .empty code { background: var(--surface-2); padding: 1px 4px; border-radius: 4px; }
+  .panel {
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    overflow: auto;
+    min-width: 0;
+  }
+  .panel-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .panel-head h2 { margin: 0; font-size: 14px; }
+  .panel-body { padding: 12px 14px 24px; }
+  .panel-title { margin: 0 0 6px; font-size: 15px; line-height: 1.3; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
+  .tag {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .tag.type-activity { border-color: #1a73e8; color: #1a73e8; }
+  .tag.type-fragment { border-color: #137333; color: #137333; }
+  .tag.type-compose { border-color: #8430ce; color: #8430ce; }
+  .tag.type-dialog { border-color: #b06000; color: #b06000; }
+  .tag.type-bottomSheet { border-color: #c5221f; color: #c5221f; }
+  @media (prefers-color-scheme: dark) {
+    .tag.type-activity { border-color: #8ab4f8; color: #8ab4f8; }
+    .tag.type-fragment { border-color: #81c995; color: #81c995; }
+    .tag.type-compose { border-color: #d7aefb; color: #d7aefb; }
+    .tag.type-dialog { border-color: #fdd663; color: #fdd663; }
+    .tag.type-bottomSheet { border-color: #f28b82; color: #f28b82; }
+  }
+  .source {
+    display: block;
+    margin: 4px 0 14px;
+    padding: 7px 9px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface-2);
+    color: var(--muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11.5px;
+    overflow-wrap: anywhere;
+  }
+  .section-title {
+    margin: 16px 0 6px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+  }
+  .kv { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .kv th, .kv td {
+    padding: 5px 6px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+  }
+  .kv th { width: 38%; color: var(--muted); font-weight: 600; }
+  .kv code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px; }
+  ul.plain { margin: 4px 0; padding-left: 18px; }
+  ul.plain li { margin: 3px 0; overflow-wrap: anywhere; }
+  ul.api-list { margin: 4px 0; padding: 0; list-style: none; }
+  ul.api-list li {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    margin: 4px 0;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface-2);
+    font-size: 12.5px;
+    overflow-wrap: anywhere;
+  }
+  ul.api-list code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11.5px;
+    overflow-wrap: anywhere;
+  }
+  .api-method {
+    flex: none;
+    min-width: 42px;
+    padding: 1px 5px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    text-align: center;
+  }
+  .api-method.method-get { color: #137333; border-color: #137333; background: #e6f4ea; }
+  .api-method.method-post { color: #1a73e8; border-color: #1a73e8; background: #e8f0fe; }
+  .api-method.method-put { color: #b06000; border-color: #b06000; background: #fef7e0; }
+  .api-method.method-patch { color: #8430ce; border-color: #8430ce; background: #f3e8fd; }
+  .api-method.method-delete { color: #c5221f; border-color: #c5221f; background: #fce8e6; }
+  @media (prefers-color-scheme: dark) {
+    .api-method.method-get { color: #81c995; border-color: #81c995; background: #1e3a2b; }
+    .api-method.method-post { color: #8ab4f8; border-color: #8ab4f8; background: #1f3a5f; }
+    .api-method.method-put { color: #fdd663; border-color: #fdd663; background: #4a3a12; }
+    .api-method.method-patch { color: #d7aefb; border-color: #d7aefb; background: #3a1f52; }
+    .api-method.method-delete { color: #f28b82; border-color: #f28b82; background: #4a1f1c; }
+  }
+  .edge-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    width: 100%;
+    margin: 4px 0;
+    padding: 7px 9px;
+    text-align: left;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .edge-row:hover { border-color: var(--accent); }
+  .edge-row-label { font-size: 12.5px; font-weight: 600; }
+  .edge-row-meta { color: var(--muted); font-size: 11.5px; overflow-wrap: anywhere; }
+  .legend { display: grid; gap: 5px; margin: 4px 0; }
+  .legend-row { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; }
+  .legend-line { width: 26px; height: 0; border-top: 2px solid #5f6368; }
+  .legend-line.dashed { border-top-style: dashed; }
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0 4px; }
+  .stat-card {
+    padding: 9px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface-2);
+    text-align: center;
+  }
+  .stat-card strong { display: block; font-size: 18px; }
+  .stat-card span { color: var(--muted); font-size: 11px; }
+  .unresolved-item {
+    margin: 5px 0;
+    padding: 7px 9px;
+    border-left: 3px solid var(--danger);
+    background: var(--surface-2);
+    border-radius: 0 7px 7px 0;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+  .unresolved-item code {
+    display: block;
+    margin-top: 3px;
+    color: var(--muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+  }
+  .icon-btn {
+    width: 28px;
+    height: 28px;
+    padding: 0 !important;
+    line-height: 1;
+    font-size: 17px !important;
+  }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+    .panel { max-height: 42vh; border-left: none; border-top: 1px solid var(--border); }
+    header { flex-direction: column; }
+    .stats { justify-content: flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <main class="main">
+    <header>
+      <div>
+        <h1>Android Navigation Map</h1>
+        <p id="project-name" class="muted">Loading…</p>
+      </div>
+      <div class="stats">
+        <span class="chip"><strong id="stat-nodes">0</strong> screens</span>
+        <span class="chip"><strong id="stat-edges">0</strong> transitions</span>
+        <span class="chip"><strong id="stat-unresolved">0</strong> unresolved</span>
+      </div>
+    </header>
+
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="Search screens, modules, sources…" aria-label="Search screens">
+      <div id="type-filters" class="filters" aria-label="Filter by screen type"></div>
+      <select id="group-filter" aria-label="Filter by group"></select>
+      <label class="check"><input id="only-services" type="checkbox"> Only with services</label>
+      <label class="check"><input id="show-args" type="checkbox" checked> Arguments</label>
+      <label class="check"><input id="show-services" type="checkbox" checked> Services</label>
+      <label class="check"><input id="show-apis" type="checkbox" checked> APIs</label>
+      <label class="check"><input id="show-edge-labels" type="checkbox" checked> Edge labels</label>
+      <label class="check"><input id="show-groups" type="checkbox" checked> Groups</label>
+      <button id="fit" class="primary" title="Fit to screen">Fit</button>
+      <button id="reset-layout" title="Reset card positions">Reset layout</button>
+      <button id="zoom-in" aria-label="Zoom in">+</button>
+      <button id="zoom-out" aria-label="Zoom out">−</button>
+      <button id="toggle-panel" aria-pressed="false" title="Hide details panel">Panel</button>
+      <button id="export-svg">Export SVG</button>
+      <button id="export-json">Export JSON</button>
+    </div>
+
+    <div class="canvas-wrap">
+      <svg id="canvas" role="img" aria-label="Application navigation graph">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path class="arrow-head" d="M 0 0 L 10 5 L 0 10 z"></path>
+          </marker>
+          <marker id="arrow-highlight" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path class="arrow-head-highlight" d="M 0 0 L 10 5 L 0 10 z"></path>
+          </marker>
+        </defs>
+        <style>
+          .node rect { fill: #ffffff; stroke: #c7c7c7; stroke-width: 1.5; }
+          .node .label { fill: #202124; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 13px; font-weight: 600; }
+          .node .meta { fill: #5f6368; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 10.5px; }
+          .node .badge { fill: #5f6368; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 10px; }
+          .node .api { fill: #3c4043; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 10.5px; }
+          .node.type-activity rect { fill: #e8f0fe; stroke: #1a73e8; }
+          .node.type-fragment rect { fill: #e6f4ea; stroke: #137333; }
+          .node.type-compose rect { fill: #f3e8fd; stroke: #8430ce; }
+          .node.type-dialog rect { fill: #fef7e0; stroke: #b06000; }
+          .node.type-bottomSheet rect { fill: #fce8e6; stroke: #c5221f; }
+          .node.type-navGraph rect { fill: #f1f3f4; stroke: #5f6368; }
+          .node.type-external rect { fill: #f1f3f4; stroke: #5f6368; stroke-dasharray: 5 4; }
+          .node.type-unknown rect { fill: #f1f3f4; stroke: #5f6368; stroke-dasharray: 5 4; }
+          .node.selected rect { stroke-width: 3; }
+          .node { cursor: grab; user-select: none; }
+          .node.dragging { cursor: grabbing; }
+          .node:focus { outline: none; }
+          .node:focus rect { stroke-width: 3; stroke-dasharray: 3 2; }
+          .node.dim { opacity: .18; }
+          .edge .line { fill: none; stroke: #5f6368; stroke-width: 1.5; pointer-events: none; }
+          .edge .hit { fill: none; stroke: transparent; stroke-width: 16; pointer-events: stroke; cursor: pointer; }
+          .edge.confidence-unknown .line,
+          .edge.kind-deepLink .line,
+          .edge.kind-unknown .line { stroke-dasharray: 6 5; }
+          .edge.highlight .line { stroke: #1a73e8; stroke-width: 2.5; }
+          .edge.dim { opacity: .12; }
+          .edge-label text { fill: #3c4043; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 10.5px; }
+          .edge-label rect { fill: #ffffff; opacity: .92; }
+          .edge-label { pointer-events: none; }
+          .group-box { fill: none; stroke: #dadce0; stroke-width: 1.5; stroke-dasharray: 5 5; }
+          .group-label { fill: #5f6368; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 11px; font-weight: 600; }
+          .group { pointer-events: none; }
+          .arrow-head { fill: #5f6368; }
+          .arrow-head-highlight { fill: #1a73e8; }
+          .hidden { display: none; }
+          @media (prefers-color-scheme: dark) {
+            .node rect { fill: #292a2d; stroke: #5f6368; }
+            .node .label { fill: #e8eaed; }
+            .node .meta, .node .badge { fill: #9aa0a6; }
+            .node .api { fill: #bdc1c6; }
+            .node.type-activity rect { fill: #1f3a5f; stroke: #8ab4f8; }
+            .node.type-fragment rect { fill: #1e3a2b; stroke: #81c995; }
+            .node.type-compose rect { fill: #3a1f52; stroke: #d7aefb; }
+            .node.type-dialog rect { fill: #4a3a12; stroke: #fdd663; }
+            .node.type-bottomSheet rect { fill: #4a1f1c; stroke: #f28b82; }
+            .node.type-navGraph rect, .node.type-external rect, .node.type-unknown rect { fill: #35363a; stroke: #9aa0a6; }
+            .edge .line { stroke: #9aa0a6; }
+            .edge-label text { fill: #bdc1c6; }
+            .edge-label rect { fill: #202124; }
+            .group-box { stroke: #3c4043; }
+            .group-label { fill: #9aa0a6; }
+            .arrow-head { fill: #9aa0a6; }
+            .arrow-head-highlight { fill: #8ab4f8; }
+            .edge.highlight .line { stroke: #8ab4f8; }
+          }
+        </style>
+        <g id="viewport">
+          <g id="groups"></g>
+          <g id="edges"></g>
+          <g id="nodes"></g>
+        </g>
+      </svg>
+      <div id="empty" class="empty" hidden>
+        <h2>No navigation found</h2>
+        <p>Replace the sample JSON in the <code>nav-graph</code> script with the generated graph.</p>
+      </div>
+      <div class="hint">Drag a card to move it · Drag the canvas to pan · Scroll to zoom · Click a card or edge</div>
+    </div>
+  </main>
+
+  <aside class="panel" id="panel" aria-live="polite"></aside>
+</div>
+
+<script type="application/json" id="nav-graph">
+{
+  "project": {
+    "name": "SampleApp",
+    "modules": ["app", "feature:home", "feature:detail", "feature:profile"]
+  },
+  "nodes": [
+    {
+      "id": "activity:com.example.MainActivity",
+      "type": "activity",
+      "label": "MainActivity",
+      "module": "app",
+      "source": "app/src/main/java/com/example/MainActivity.kt:18",
+      "args": [],
+      "services": [],
+      "group": "app",
+      "entry": true
+    },
+    {
+      "id": "fragment:com.example.home.HomeFragment",
+      "type": "fragment",
+      "label": "HomeFragment",
+      "module": "feature:home",
+      "source": "feature/home/src/main/java/com/example/home/HomeFragment.kt:24",
+      "args": [],
+      "services": [],
+      "group": "feature:home"
+    },
+    {
+      "id": "compose:com.example.home.HomeScreen",
+      "type": "compose",
+      "label": "HomeScreen",
+      "module": "feature:home",
+      "source": "feature/home/src/main/java/com/example/home/HomeScreen.kt:36",
+      "args": [],
+      "services": ["HomeViewModel → GetFeedUseCase → FeedRepository → GET /feed"],
+      "apis": [{ "method": "GET", "path": "/feed", "source": "data/FeedApi.kt:12" }],
+      "group": "feature:home"
+    },
+    {
+      "id": "compose:com.example.detail.DetailScreen",
+      "type": "compose",
+      "label": "DetailScreen",
+      "module": "feature:detail",
+      "source": "feature/detail/src/main/java/com/example/detail/DetailScreen.kt:42",
+      "args": [{ "name": "itemId", "type": "String" }],
+      "services": ["DetailViewModel → GetItemUseCase → ItemRepository → GET /items/{itemId}"],
+      "apis": [{ "method": "GET", "path": "/items/{itemId}", "source": "data/ItemApi.kt:12" }],
+      "group": "feature:detail"
+    },
+    {
+      "id": "compose:com.example.profile.ProfileScreen",
+      "type": "compose",
+      "label": "ProfileScreen",
+      "module": "feature:profile",
+      "source": "feature/profile/src/main/java/com/example/profile/ProfileScreen.kt:30",
+      "args": [],
+      "services": ["ProfileViewModel → GetProfileUseCase → ProfileRepository → GET /me"],
+      "apis": [{ "method": "GET", "path": "/me", "source": "data/ProfileApi.kt:12" }],
+      "group": "feature:profile"
+    },
+    {
+      "id": "dialog:com.example.home.FilterDialog",
+      "type": "dialog",
+      "label": "FilterDialog",
+      "module": "feature:home",
+      "source": "feature/home/src/main/java/com/example/home/FilterDialog.kt:20",
+      "args": [{ "name": "selected", "type": "String?" }],
+      "services": [],
+      "group": "feature:home"
+    },
+    {
+      "id": "external:com.example.WebViewActivity",
+      "type": "external",
+      "label": "WebViewActivity",
+      "module": "app",
+      "source": "app/src/main/AndroidManifest.xml:42",
+      "args": [{ "name": "url", "type": "String" }],
+      "services": [],
+      "group": "app"
+    }
+  ],
+  "edges": [
+    {
+      "from": "activity:com.example.MainActivity",
+      "to": "fragment:com.example.home.HomeFragment",
+      "kind": "include",
+      "label": "NavHostFragment",
+      "confidence": "explicit",
+      "source": "app/src/main/res/layout/activity_main.xml:12"
+    },
+    {
+      "from": "fragment:com.example.home.HomeFragment",
+      "to": "compose:com.example.home.HomeScreen",
+      "kind": "navigate",
+      "label": "ComposeView.setContent",
+      "confidence": "explicit",
+      "source": "feature/home/src/main/java/com/example/home/HomeFragment.kt:31"
+    },
+    {
+      "from": "compose:com.example.home.HomeScreen",
+      "to": "compose:com.example.detail.DetailScreen",
+      "kind": "navigate",
+      "label": "navigate(Detail)",
+      "args": [{ "name": "itemId", "type": "String" }],
+      "confidence": "explicit",
+      "source": "feature/home/src/main/java/com/example/home/HomeScreen.kt:88"
+    },
+    {
+      "from": "compose:com.example.home.HomeScreen",
+      "to": "compose:com.example.profile.ProfileScreen",
+      "kind": "navigate",
+      "label": "navigate(Profile)",
+      "confidence": "explicit",
+      "source": "feature/home/src/main/java/com/example/home/HomeScreen.kt:92"
+    },
+    {
+      "from": "compose:com.example.home.HomeScreen",
+      "to": "dialog:com.example.home.FilterDialog",
+      "kind": "navigate",
+      "label": "showFilterDialog",
+      "args": [{ "name": "selected", "type": "String?" }],
+      "confidence": "inferred",
+      "source": "feature/home/src/main/java/com/example/home/HomeScreen.kt:104"
+    },
+    {
+      "from": "compose:com.example.detail.DetailScreen",
+      "to": "external:com.example.WebViewActivity",
+      "kind": "intent",
+      "label": "startActivity(Intent(ACTION_VIEW))",
+      "args": [{ "name": "url", "type": "String" }],
+      "confidence": "explicit",
+      "source": "feature/detail/src/main/java/com/example/detail/DetailScreen.kt:77"
+    },
+    {
+      "from": "compose:com.example.profile.ProfileScreen",
+      "to": "activity:com.example.MainActivity",
+      "kind": "intent",
+      "label": "startActivity(MainActivity)",
+      "confidence": "explicit",
+      "source": "feature/profile/src/main/java/com/example/profile/ProfileScreen.kt:61"
+    }
+  ],
+  "groups": [
+    { "id": "app", "label": "app" },
+    { "id": "feature:home", "label": "Home" },
+    { "id": "feature:detail", "label": "Detail" },
+    { "id": "feature:profile", "label": "Profile" }
+  ],
+  "unresolved": [
+    {
+      "reason": "navigate(routeVariable) controlled by a feature flag",
+      "source": "feature/home/src/main/java/com/example/home/HomeScreen.kt:120"
+    }
+  ]
+}
+</script>
+
+<script>
+(() => {
+  "use strict";
+
+  const NS = "http://www.w3.org/2000/svg";
+  const NODE_W = 300;
+  const NODE_H = 86;
+  const GAP_X = 110;
+  const GAP_Y = 34;
+  const PAD = 24;
+  const MIN_SCALE = 0.1;
+  const MAX_SCALE = 4;
+  const READABLE_MIN_SCALE = 0.6;
+
+  const graph = JSON.parse(document.getElementById("nav-graph").textContent);
+  graph.nodes = Array.isArray(graph.nodes) ? graph.nodes : [];
+  graph.edges = Array.isArray(graph.edges) ? graph.edges : [];
+  graph.groups = Array.isArray(graph.groups) ? graph.groups : [];
+  graph.unresolved = Array.isArray(graph.unresolved) ? graph.unresolved : [];
+
+  const byId = new Map(graph.nodes.map((node) => [node.id, node]));
+  const edgeEls = new Map();
+  const edgeLabelEls = new Map();
+  const groupEls = new Map();
+  const incoming = new Map(graph.nodes.map((node) => [node.id, []]));
+  const outgoing = new Map(graph.nodes.map((node) => [node.id, []]));
+  for (const edge of graph.edges) {
+    if (incoming.has(edge.to)) incoming.get(edge.to).push(edge);
+    if (outgoing.has(edge.from)) outgoing.get(edge.from).push(edge);
+  }
+
+  const state = {
+    tx: 0,
+    ty: 0,
+    scale: 1,
+    initialized: false,
+    userInteracted: false,
+    lastFit: { w: 0, h: 0 },
+    bbox: { x1: 0, y1: 0, x2: 800, y2: 600 },
+    selected: null,
+    layout: null,
+    moved: new Map(),
+    drag: null,
+    suppressClickUntil: 0,
+    typeCount: 0,
+    filters: {
+      types: new Set(),
+      group: "all",
+      search: "",
+      onlyServices: false,
+      showArgs: true,
+      showServices: true,
+      showApis: true,
+      showEdgeLabels: true,
+      showGroups: true
+    }
+  };
+
+  const svg = document.getElementById("canvas");
+  const viewport = document.getElementById("viewport");
+  const groupsLayer = document.getElementById("groups");
+  const edgesLayer = document.getElementById("edges");
+  const nodesLayer = document.getElementById("nodes");
+  const panel = document.getElementById("panel");
+  const empty = document.getElementById("empty");
+
+  function svgEl(tag, attrs = {}, children = []) {
+    const el = document.createElementNS(NS, tag);
+    for (const [key, value] of Object.entries(attrs)) {
+      if (value === undefined || value === null) continue;
+      el.setAttribute(key, String(value));
+    }
+    const list = Array.isArray(children) ? children : [children];
+    for (const child of list) {
+      if (child === undefined || child === null) continue;
+      el.appendChild(typeof child === "string" ? document.createTextNode(child) : child);
+    }
+    return el;
+  }
+
+  function h(tag, attrs = {}, children = []) {
+    const el = document.createElement(tag);
+    for (const [key, value] of Object.entries(attrs)) {
+      if (key === "class") el.className = value;
+      else if (key === "text") el.textContent = value;
+      else if (key.startsWith("on") && typeof value === "function") el.addEventListener(key.slice(2), value);
+      else if (value !== undefined && value !== null) el.setAttribute(key, String(value));
+    }
+    const list = Array.isArray(children) ? children : [children];
+    for (const child of list) {
+      if (child === undefined || child === null) continue;
+      el.appendChild(typeof child === "string" ? document.createTextNode(child) : child);
+    }
+    return el;
+  }
+
+  function truncate(value, length) {
+    const text = String(value ?? "");
+    return text.length > length ? text.slice(0, length - 1) + "…" : text;
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function typeLabel(type) {
+    return String(type || "unknown");
+  }
+
+  function apiText(api) {
+    if (typeof api === "string") return api;
+    if (!api || typeof api !== "object") return "";
+    return [api.method, api.path].filter(Boolean).join(" ");
+  }
+
+  const measure = document.createElement("canvas").getContext("2d");
+  measure.font = "10.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+
+  function wrapApi(value) {
+    const lines = [];
+    let line = "";
+    for (const char of value) {
+      if (line && measure.measureText(line + char).width > NODE_W - 28) {
+        lines.push(line);
+        line = "";
+      }
+      line += char;
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  function nodeMetrics(node) {
+    const lines = state.filters.showApis && Array.isArray(node.apis)
+      ? node.apis.flatMap((api) => wrapApi(apiText(api)))
+      : [];
+    return { width: NODE_W, height: NODE_H + (lines.length ? 18 + lines.length * 15 : 0), lines };
+  }
+
+  function computeLayout(metrics) {
+    const nodes = graph.nodes;
+    const out = new Map(nodes.map((node) => [node.id, []]));
+    for (const edge of graph.edges) {
+      if (!byId.has(edge.from) || !byId.has(edge.to)) continue;
+      out.get(edge.from).push(edge.to);
+    }
+
+    const color = new Map();
+    const back = new Set();
+    const key = (from, to) => from + "|" + to;
+
+    const dfs = (id) => {
+      color.set(id, 1);
+      for (const next of out.get(id)) {
+        const nextColor = color.get(next);
+        if (nextColor === 1) back.add(key(id, next));
+        else if (!nextColor) dfs(next);
+      }
+      color.set(id, 2);
+    };
+    for (const node of nodes) if (!color.get(node.id)) dfs(node.id);
+
+    const indegree = new Map(nodes.map((node) => [node.id, 0]));
+    for (const edge of graph.edges) {
+      if (!byId.has(edge.from) || !byId.has(edge.to)) continue;
+      if (back.has(key(edge.from, edge.to))) continue;
+      indegree.set(edge.to, indegree.get(edge.to) + 1);
+    }
+
+    const layer = new Map(nodes.map((node) => [node.id, 0]));
+    const queue = nodes.filter((node) => indegree.get(node.id) === 0).map((node) => node.id);
+    const order = new Set();
+    let cursor = 0;
+    while (cursor < queue.length) {
+      const id = queue[cursor++];
+      order.add(id);
+      for (const next of out.get(id)) {
+        if (back.has(key(id, next))) continue;
+        layer.set(next, Math.max(layer.get(next) || 0, (layer.get(id) || 0) + 1));
+        indegree.set(next, indegree.get(next) - 1);
+        if (indegree.get(next) === 0) queue.push(next);
+      }
+    }
+    for (const node of nodes) {
+      if (!order.has(node.id)) {
+        order.add(node.id);
+        if (!layer.has(node.id)) layer.set(node.id, 0);
+      }
+    }
+
+    const byLayer = new Map();
+    for (const node of nodes) {
+      const level = layer.get(node.id) || 0;
+      if (!byLayer.has(level)) byLayer.set(level, []);
+      byLayer.get(level).push(node);
+    }
+
+    const groupOrder = new Map(graph.groups.map((group, index) => [group.id, index]));
+    for (const list of byLayer.values()) {
+      list.sort((a, b) => {
+        const ga = groupOrder.has(a.group) ? groupOrder.get(a.group) : 999;
+        const gb = groupOrder.has(b.group) ? groupOrder.get(b.group) : 999;
+        return ga - gb || String(a.label).localeCompare(String(b.label));
+      });
+    }
+
+    const levels = [...byLayer.entries()].sort((a, b) => a[0] - b[0]);
+    const heights = new Map(levels.map(([level, list]) => [
+      level, list.reduce((sum, node) => sum + metrics.get(node.id).height, 0) + Math.max(0, list.length - 1) * GAP_Y
+    ]));
+    const maxHeight = Math.max(0, ...heights.values());
+    const positions = new Map();
+
+    for (const [level, list] of levels) {
+      let y = PAD + (maxHeight - heights.get(level)) / 2;
+      list.forEach((node) => {
+        const automatic = {
+          x: PAD + level * (NODE_W + GAP_X),
+          y
+        };
+        positions.set(node.id, { ...(state.moved.get(node.id) || automatic), ...metrics.get(node.id) });
+        y += metrics.get(node.id).height + GAP_Y;
+      });
+    }
+
+    return { positions, back };
+  }
+
+  function computeBBox(positions) {
+    let x1 = Infinity;
+    let y1 = Infinity;
+    let x2 = -Infinity;
+    let y2 = -Infinity;
+    for (const position of positions.values()) {
+      x1 = Math.min(x1, position.x);
+      y1 = Math.min(y1, position.y);
+      x2 = Math.max(x2, position.x + position.width);
+      y2 = Math.max(y2, position.y + position.height);
+    }
+    for (const edge of graph.edges) {
+      const from = positions.get(edge.from);
+      const to = positions.get(edge.to);
+      if (!from || !to) continue;
+      const box = edgePath(from, to).bounds;
+      x1 = Math.min(x1, box.x1);
+      y1 = Math.min(y1, box.y1);
+      x2 = Math.max(x2, box.x2);
+      y2 = Math.max(y2, box.y2);
+    }
+    if (!Number.isFinite(x1)) return { x1: 0, y1: 0, x2: 800, y2: 600 };
+    return { x1: x1 - 70, y1: y1 - 70, x2: x2 + 70, y2: y2 + 140 };
+  }
+
+  function computeGroupBounds(positions) {
+    const bounds = new Map();
+    for (const node of graph.nodes) {
+      if (!node.group) continue;
+      const position = positions.get(node.id);
+      if (!position) continue;
+      const current = bounds.get(node.group) || { x1: Infinity, y1: Infinity, x2: -Infinity, y2: -Infinity };
+      current.x1 = Math.min(current.x1, position.x);
+      current.y1 = Math.min(current.y1, position.y);
+      current.x2 = Math.max(current.x2, position.x + position.width);
+      current.y2 = Math.max(current.y2, position.y + position.height);
+      bounds.set(node.group, current);
+    }
+    return bounds;
+  }
+
+  function applyGroupBox(wrapper, box) {
+    const pad = 18;
+    const rect = wrapper.querySelector("rect");
+    const text = wrapper.querySelector("text");
+    if (rect) {
+      rect.setAttribute("x", box.x1 - pad);
+      rect.setAttribute("y", box.y1 - pad - 16);
+      rect.setAttribute("width", box.x2 - box.x1 + pad * 2);
+      rect.setAttribute("height", box.y2 - box.y1 + pad * 2 + 16);
+    }
+    if (text) {
+      text.setAttribute("x", box.x1 - pad + 6);
+      text.setAttribute("y", box.y1 - pad - 3);
+    }
+  }
+
+  function renderGroups(positions) {
+    groupEls.clear();
+    const bounds = computeGroupBounds(positions);
+    for (const [id, box] of bounds) {
+      const group = graph.groups.find((item) => item.id === id);
+      const label = group ? group.label : id;
+      const wrapper = svgEl("g", { class: "group", "data-group": id });
+      wrapper.appendChild(svgEl("rect", {
+        class: "group-box",
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        rx: 14
+      }));
+      wrapper.appendChild(svgEl("text", {
+        class: "group-label",
+        x: 0,
+        y: 0
+      }, [label]));
+      applyGroupBox(wrapper, box);
+      groupEls.set(id, wrapper);
+      groupsLayer.appendChild(wrapper);
+    }
+    groupsLayer.style.display = state.filters.showGroups ? "" : "none";
+  }
+
+  function updateGroups(positions) {
+    const bounds = computeGroupBounds(positions);
+    for (const [id, wrapper] of groupEls) {
+      const box = bounds.get(id);
+      if (box) applyGroupBox(wrapper, box);
+    }
+  }
+
+  function edgePath(from, to) {
+    const forward = from.x + from.width <= to.x + 1;
+    if (forward) {
+      const x1 = from.x + from.width;
+      const y1 = from.y + from.height / 2;
+      const x2 = to.x;
+      const y2 = to.y + to.height / 2;
+      const dx = Math.max(40, (x2 - x1) * 0.5);
+      return {
+        d: "M " + x1 + " " + y1 + " C " + (x1 + dx) + " " + y1 + ", " + (x2 - dx) + " " + y2 + ", " + x2 + " " + y2,
+        bounds: { x1: Math.min(x1, x2 - dx), x2: Math.max(x2, x1 + dx), y1: Math.min(y1, y2), y2: Math.max(y1, y2) },
+        labelOffset: -9
+      };
+    }
+    const x1 = from.x + from.width / 2;
+    const y1 = from.y + from.height;
+    const x2 = to.x + to.width / 2;
+    const y2 = to.y + to.height;
+    const bend = Math.max(55, Math.abs(x2 - x1) * 0.25);
+    return {
+      d: "M " + x1 + " " + y1 + " C " + x1 + " " + (y1 + bend) + ", " + x2 + " " + (y2 + bend) + ", " + x2 + " " + y2,
+      bounds: { x1: Math.min(x1, x2), x2: Math.max(x1, x2), y1: Math.min(y1, y2), y2: Math.max(y1, y2) + bend },
+      labelOffset: 16
+    };
+  }
+
+  function buildEdgeLabel(edge) {
+    const base = edge.label || edge.kind || "navigate";
+    if (state.filters.showArgs && Array.isArray(edge.args) && edge.args.length) {
+      const args = edge.args.map((arg) => (arg.name || "arg") + ": " + (arg.type || "?")).join(", ");
+      return truncate(base + " (" + args + ")", 48);
+    }
+    return truncate(base, 48);
+  }
+
+  function positionEdgeLabel(item) {
+    try {
+      const length = item.line.getTotalLength();
+      const mid = item.line.getPointAtLength(length / 2);
+      const box = item.text.getBBox();
+      const tx = mid.x - box.width / 2;
+      const ty = mid.y + item.offset;
+      item.text.setAttribute("x", tx);
+      item.text.setAttribute("y", ty);
+      item.rect.setAttribute("x", tx - 4);
+      item.rect.setAttribute("y", ty - box.height + 1);
+      item.rect.setAttribute("width", box.width + 8);
+      item.rect.setAttribute("height", box.height + 2);
+    } catch (error) {
+      // Geometry is unavailable for a hidden edge; leave the label at its default position.
+    }
+  }
+
+  function updateEdgeGeometry(edge, positions) {
+    const wrapper = edgeEls.get(edge);
+    if (!wrapper) return;
+    const from = positions.get(edge.from);
+    const to = positions.get(edge.to);
+    if (!from || !to) return;
+    const path = edgePath(from, to);
+    const line = wrapper.querySelector("path.line");
+    const hit = wrapper.querySelector("path.hit");
+    if (line) line.setAttribute("d", path.d);
+    if (hit) hit.setAttribute("d", path.d);
+    const label = edgeLabelEls.get(edge);
+    if (label) {
+      label.offset = path.labelOffset;
+      positionEdgeLabel(label);
+    }
+  }
+
+  function updateConnectedEdges(nodeId, positions) {
+    for (const edge of graph.edges) {
+      if (edge.from === nodeId || edge.to === nodeId) updateEdgeGeometry(edge, positions);
+    }
+  }
+
+  function renderEdges(positions) {
+    edgeEls.clear();
+    edgeLabelEls.clear();
+    const pendingLabels = [];
+
+    for (const edge of graph.edges) {
+      const from = positions.get(edge.from);
+      const to = positions.get(edge.to);
+      if (!from || !to) continue;
+
+      const path = edgePath(from, to);
+      const wrapper = svgEl("g", {
+        class: "edge kind-" + (edge.kind || "unknown") + " confidence-" + (edge.confidence || "explicit"),
+        "data-from": edge.from,
+        "data-to": edge.to
+      });
+      const hit = svgEl("path", { class: "hit", d: path.d });
+      const line = svgEl("path", { class: "line", d: path.d, "marker-end": "url(#arrow)" });
+      wrapper.appendChild(hit);
+      wrapper.appendChild(line);
+
+      if (state.filters.showEdgeLabels) {
+        const labelText = buildEdgeLabel(edge);
+        if (labelText) {
+          const labelGroup = svgEl("g", { class: "edge-label" });
+          const rect = svgEl("rect", { class: "label-bg", x: 0, y: 0, width: 0, height: 0, rx: 3 });
+          const text = svgEl("text", { x: 0, y: 0 }, [labelText]);
+          labelGroup.appendChild(rect);
+          labelGroup.appendChild(text);
+          wrapper.appendChild(labelGroup);
+          const item = { line, text, rect, offset: path.labelOffset };
+          pendingLabels.push(item);
+          edgeLabelEls.set(edge, item);
+        }
+      }
+
+      hit.addEventListener("pointerdown", (event) => event.stopPropagation());
+      hit.addEventListener("click", (event) => {
+        event.stopPropagation();
+        selectEdge(edge);
+      });
+
+      edgeEls.set(edge, wrapper);
+      edgesLayer.appendChild(wrapper);
+    }
+
+    requestAnimationFrame(() => {
+      for (const item of pendingLabels) {
+        try {
+          const length = item.line.getTotalLength();
+          const mid = item.line.getPointAtLength(length / 2);
+          const box = item.text.getBBox();
+          const tx = mid.x - box.width / 2;
+          const ty = mid.y + item.offset;
+          item.text.setAttribute("x", tx);
+          item.text.setAttribute("y", ty);
+          item.rect.setAttribute("x", tx - 4);
+          item.rect.setAttribute("y", ty - box.height + 1);
+          item.rect.setAttribute("width", box.width + 8);
+          item.rect.setAttribute("height", box.height + 2);
+        } catch (error) {
+          // Geometry is unavailable for a hidden edge; leave the label at its default position.
+        }
+      }
+    });
+  }
+
+  function renderNodes(positions) {
+    for (const node of graph.nodes) {
+      const position = positions.get(node.id);
+      if (!position) continue;
+
+      const wrapper = svgEl("g", {
+        class: "node type-" + (node.type || "unknown"),
+        "data-id": node.id,
+        transform: "translate(" + position.x + " " + position.y + ")",
+        tabindex: "0",
+        role: "button",
+        "aria-label": node.label + ", " + typeLabel(node.type)
+      });
+      wrapper.appendChild(svgEl("rect", {
+        x: 0,
+        y: 0,
+        width: position.width,
+        height: position.height,
+        rx: 10
+      }));
+      wrapper.appendChild(svgEl("text", {
+        class: "label",
+        x: 14,
+        y: 28
+      }, [truncate(node.label || node.id, 27)]));
+      wrapper.appendChild(svgEl("text", {
+        class: "meta",
+        x: 14,
+        y: 48
+      }, [typeLabel(node.type) + (node.module ? " · " + node.module : "")]));
+
+      const badges = [];
+      if (state.filters.showArgs && Array.isArray(node.args) && node.args.length) {
+        badges.push("{ } " + node.args.length);
+      }
+      if (state.filters.showServices && Array.isArray(node.services) && node.services.length) {
+        badges.push("⚙ " + node.services.length);
+      }
+      if (badges.length) {
+        wrapper.appendChild(svgEl("text", {
+          class: "badge",
+          x: 14,
+          y: 68
+        }, [badges.join("   ")]));
+      }
+
+      if (position.lines.length) {
+        wrapper.appendChild(svgEl("text", { class: "badge", x: 14, y: 87 }, ["APIs"]));
+        position.lines.forEach((line, index) => {
+          wrapper.appendChild(svgEl("text", {
+            class: "api", x: 14, y: 103 + index * 15
+          }, [line]));
+        });
+      }
+
+      wrapper.appendChild(svgEl("title", {}, [
+        (node.label || node.id) + "\n" + (node.source || "No source recorded")
+      ]));
+
+      wrapper.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (Date.now() < state.suppressClickUntil) return;
+        selectNode(node.id);
+      });
+      wrapper.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          selectNode(node.id);
+        }
+      });
+
+      nodesLayer.appendChild(wrapper);
+    }
+  }
+
+  function applyFilters() {
+    const query = state.filters.search.trim().toLowerCase();
+    const totalTypes = state.typeCount;
+    const structural = (node) => {
+      if (!node) return false;
+      if (totalTypes > 0 && state.filters.types.size < totalTypes && !state.filters.types.has(node.type)) return false;
+      if (state.filters.group !== "all" && node.group !== state.filters.group) return false;
+      if (state.filters.onlyServices && !(Array.isArray(node.services) && node.services.length)) return false;
+      return true;
+    };
+    const matches = (node) => {
+      if (!query) return true;
+      const haystack = [node.label, node.type, node.module, node.source, node.group]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(query);
+    };
+
+    for (const element of nodesLayer.children) {
+      const node = byId.get(element.getAttribute("data-id"));
+      const visible = structural(node);
+      element.classList.toggle("hidden", !visible);
+      element.classList.toggle("dim", visible && !matches(node));
+    }
+
+    for (const element of edgesLayer.children) {
+      const from = byId.get(element.getAttribute("data-from"));
+      const to = byId.get(element.getAttribute("data-to"));
+      const visible = structural(from) && structural(to);
+      element.classList.toggle("hidden", !visible);
+      element.classList.toggle("dim", visible && Boolean(query) && !matches(from) && !matches(to));
+    }
+    for (const [edge, element] of edgeEls) {
+      if (!element.classList.contains("hidden")) updateEdgeGeometry(edge, state.layout.positions);
+    }
+
+    for (const element of groupsLayer.children) {
+      const group = element.getAttribute("data-group");
+      const visible = graph.nodes.some((node) => node.group === group && structural(node));
+      element.classList.toggle("hidden", !visible);
+    }
+  }
+
+  function updateHighlight() {
+    const selectedNodeId = state.selected && state.selected.kind === "node" ? state.selected.id : null;
+    const selectedEdge = state.selected && state.selected.kind === "edge" ? state.selected.edge : null;
+
+    for (const element of nodesLayer.children) {
+      const id = element.getAttribute("data-id");
+      element.classList.toggle("selected", id === selectedNodeId);
+    }
+
+    for (const [edge, element] of edgeEls) {
+      const connected = selectedNodeId && (edge.from === selectedNodeId || edge.to === selectedNodeId);
+      const selected = selectedEdge === edge;
+      element.classList.toggle("highlight", Boolean(selected || connected));
+      const line = element.querySelector("path.line");
+      if (line) {
+        line.setAttribute("marker-end", selected || connected ? "url(#arrow-highlight)" : "url(#arrow)");
+      }
+    }
+  }
+
+  function selectNode(id) {
+    state.selected = { kind: "node", id };
+    updateHighlight();
+    renderPanel();
+  }
+
+  function selectEdge(edge) {
+    state.selected = { kind: "edge", edge };
+    updateHighlight();
+    renderPanel();
+  }
+
+  function clearSelection() {
+    state.selected = null;
+    updateHighlight();
+    renderPanel();
+  }
+
+  function panelHeader(title, withClose = true) {
+    const children = [h("h2", {}, [title])];
+    if (withClose) {
+      children.push(h("button", {
+        class: "icon-btn",
+        "aria-label": "Close details",
+        title: "Close details",
+        onclick: clearSelection
+      }, ["×"]));
+    }
+    return h("div", { class: "panel-head" }, children);
+  }
+
+  function chips(items) {
+    return h("div", { class: "chips" }, items.map((item) => h("span", { class: "tag " + (item.className || "") }, [item.label])));
+  }
+
+  function argTable(args) {
+    if (!Array.isArray(args) || !args.length) {
+      return h("p", { class: "muted" }, ["No navigation arguments."]);
+    }
+    return h("table", { class: "kv" }, args.map((arg) => h("tr", {}, [
+      h("th", {}, [arg.name || "arg"]),
+      h("td", {}, [h("code", {}, [arg.type || "?"])])
+    ])));
+  }
+
+  function serviceList(services) {
+    if (!Array.isArray(services) || !services.length) {
+      return h("p", { class: "muted" }, ["No services mapped."]);
+    }
+    return h("ul", { class: "plain" }, services.map((service) => h("li", {}, [service])));
+  }
+
+  function apiList(apis) {
+    if (!Array.isArray(apis) || !apis.length) {
+      return h("p", { class: "muted" }, ["No HTTP APIs mapped."]);
+    }
+    return h("ul", { class: "api-list" }, apis.map((api) => {
+      const text = apiText(api);
+      const match = text.match(/^(\S+)\s+([\s\S]+)$/);
+      return h("li", {}, [
+        match ? h("span", { class: "api-method method-" + match[1].toLowerCase() }, [match[1]]) : null,
+        h("code", {}, [match ? match[2] : text]),
+        api && typeof api === "object" && api.source ? h("code", {}, ["(" + api.source + ")"]) : null
+      ]);
+    }));
+  }
+
+  function edgeRow(edge, direction) {
+    const other = direction === "out" ? byId.get(edge.to) : byId.get(edge.from);
+    const arrow = direction === "out" ? "→ " : "← ";
+    return h("button", {
+      class: "edge-row",
+      onclick: () => selectEdge(edge)
+    }, [
+      h("span", { class: "edge-row-label" }, [arrow + (other ? other.label : (direction === "out" ? edge.to : edge.from))]),
+      h("span", { class: "edge-row-meta" }, [edge.label || edge.kind || ""])
+    ]);
+  }
+
+  function renderSummary() {
+    const roots = graph.nodes.filter((node) => node.entry === true || !incoming.get(node.id) || incoming.get(node.id).length === 0);
+    const types = [...new Set(graph.nodes.map((node) => node.type))].sort();
+
+    const body = h("div", { class: "panel-body" }, [
+      h("p", { class: "muted", style: "margin:0 0 4px" }, [graph.project && graph.project.name ? graph.project.name : "Untitled project"]),
+      h("div", { class: "stat-grid" }, [
+        h("div", { class: "stat-card" }, [h("strong", {}, [String(graph.nodes.length)]), h("span", {}, ["screens"])]),
+        h("div", { class: "stat-card" }, [h("strong", {}, [String(graph.edges.length)]), h("span", {}, ["transitions"])]),
+        h("div", { class: "stat-card" }, [h("strong", {}, [String(graph.unresolved.length)]), h("span", {}, ["unresolved"])])
+      ]),
+      h("div", { class: "section-title" }, ["Entry points"]),
+      roots.length
+        ? h("ul", { class: "plain" }, roots.map((node) => h("li", {}, [node.label + " (" + typeLabel(node.type) + ")"])))
+        : h("p", { class: "muted" }, ["No entry points detected."]),
+      h("div", { class: "section-title" }, ["Legend"]),
+      h("div", { class: "legend" }, types.map((type) => h("div", { class: "legend-row" }, [
+        h("span", { class: "swatch type-" + type }),
+        h("span", {}, [typeLabel(type)])
+      ]))),
+      h("div", { class: "legend" }, [
+        h("div", { class: "legend-row" }, [h("span", { class: "legend-line" }), h("span", {}, ["Explicit navigation"])]),
+        h("div", { class: "legend-row" }, [h("span", { class: "legend-line dashed" }), h("span", {}, ["Deep link, implicit, or unknown"])])
+      ]),
+      h("div", { class: "section-title" }, ["Unresolved"]),
+      graph.unresolved.length
+        ? h("div", {}, graph.unresolved.map((item) => h("div", { class: "unresolved-item" }, [
+            h("div", {}, [item.reason || "Unknown transition"]),
+            item.source ? h("code", {}, [item.source]) : null
+          ])))
+        : h("p", { class: "muted" }, ["No unresolved transitions."]),
+      h("div", { class: "section-title" }, ["How to use"]),
+      h("p", { class: "muted", style: "margin:0;font-size:12px" }, [
+        "Drag a card to rearrange the graph, drag the canvas to pan, scroll to zoom, and click a card or edge to inspect it. Use the toolbar to search, filter, and toggle arguments or services."
+      ])
+    ]);
+
+    return [panelHeader("Navigation map", false), body];
+  }
+
+  function renderNodePanel(node) {
+    const out = outgoing.get(node.id) || [];
+    const inc = incoming.get(node.id) || [];
+    const body = h("div", { class: "panel-body" }, [
+      h("h3", { class: "panel-title" }, [node.label || node.id]),
+      chips([
+        { label: typeLabel(node.type), className: "type-" + (node.type || "unknown") },
+        node.module ? { label: node.module } : null,
+        node.group ? { label: node.group } : null
+      ].filter(Boolean)),
+      h("div", { class: "section-title" }, ["Source"]),
+      h("code", { class: "source" }, [node.source || "No source recorded"]),
+      h("div", { class: "section-title" }, ["Arguments"]),
+      argTable(node.args),
+      h("div", { class: "section-title" }, ["Services"]),
+      serviceList(node.services),
+      h("div", { class: "section-title" }, ["APIs"]),
+      apiList(node.apis),
+      h("div", { class: "section-title" }, ["Outgoing (" + out.length + ")"]),
+      out.length ? h("div", {}, out.map((edge) => edgeRow(edge, "out"))) : h("p", { class: "muted" }, ["No outgoing transitions."]),
+      h("div", { class: "section-title" }, ["Incoming (" + inc.length + ")"]),
+      inc.length ? h("div", {}, inc.map((edge) => edgeRow(edge, "in"))) : h("p", { class: "muted" }, ["No incoming transitions."])
+    ]);
+    return [panelHeader("Screen"), body];
+  }
+
+  function renderEdgePanel(edge) {
+    const from = byId.get(edge.from);
+    const to = byId.get(edge.to);
+    const body = h("div", { class: "panel-body" }, [
+      h("h3", { class: "panel-title" }, [(from ? from.label : edge.from) + " → " + (to ? to.label : edge.to)]),
+      chips([
+        { label: edge.kind || "unknown" },
+        { label: "confidence: " + (edge.confidence || "explicit") }
+      ]),
+      h("div", { class: "section-title" }, ["Transition"]),
+      h("table", { class: "kv" }, [
+        h("tr", {}, [h("th", {}, ["Label"]), h("td", {}, [edge.label || edge.kind || ""])]),
+        h("tr", {}, [h("th", {}, ["From"]), h("td", {}, [from ? from.label : edge.from])]),
+        h("tr", {}, [h("th", {}, ["To"]), h("td", {}, [to ? to.label : edge.to])])
+      ]),
+      h("div", { class: "section-title" }, ["Arguments"]),
+      argTable(edge.args),
+      h("div", { class: "section-title" }, ["Source"]),
+      h("code", { class: "source" }, [edge.source || "No source recorded"]),
+      h("div", { class: "section-title" }, ["Navigate"]),
+      h("div", { style: "display:flex;gap:6px;flex-wrap:wrap" }, [
+        h("button", { onclick: () => selectNode(edge.from) }, ["Select source"]),
+        h("button", { onclick: () => selectNode(edge.to) }, ["Select target"])
+      ])
+    ]);
+    return [panelHeader("Transition"), body];
+  }
+
+  function renderPanel() {
+    panel.replaceChildren();
+    if (!state.selected) {
+      for (const element of renderSummary()) panel.appendChild(element);
+      return;
+    }
+    if (state.selected.kind === "node") {
+      const node = byId.get(state.selected.id);
+      if (!node) {
+        clearSelection();
+        return;
+      }
+      for (const element of renderNodePanel(node)) panel.appendChild(element);
+      return;
+    }
+    for (const element of renderEdgePanel(state.selected.edge)) panel.appendChild(element);
+  }
+
+  function updateStats() {
+    document.getElementById("stat-nodes").textContent = String(graph.nodes.length);
+    document.getElementById("stat-edges").textContent = String(graph.edges.length);
+    document.getElementById("stat-unresolved").textContent = String(graph.unresolved.length);
+    document.getElementById("project-name").textContent = graph.project && graph.project.name
+      ? graph.project.name
+      : "Android Navigation Map";
+  }
+
+  function buildTypeFilters() {
+    const container = document.getElementById("type-filters");
+    const types = [...new Set(graph.nodes.map((node) => node.type))].sort();
+    state.typeCount = types.length;
+    container.replaceChildren();
+    for (const type of types) {
+      state.filters.types.add(type);
+      const checkbox = h("input", { type: "checkbox", checked: "checked", value: type });
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) state.filters.types.add(type);
+        else state.filters.types.delete(type);
+        applyFilters();
+      });
+      container.appendChild(h("label", { class: "check" }, [
+        checkbox,
+        h("span", { class: "swatch type-" + type }),
+        h("span", {}, [typeLabel(type)])
+      ]));
+    }
+    container.style.display = types.length ? "" : "none";
+  }
+
+  function buildGroupFilter() {
+    const select = document.getElementById("group-filter");
+    const groups = new Map();
+    for (const group of graph.groups) groups.set(group.id, group.label || group.id);
+    for (const node of graph.nodes) {
+      if (node.group && !groups.has(node.group)) groups.set(node.group, node.group);
+    }
+    select.replaceChildren(h("option", { value: "all" }, ["All groups"]));
+    for (const [id, label] of groups) {
+      select.appendChild(h("option", { value: id }, [label]));
+    }
+    select.style.display = groups.size ? "" : "none";
+    select.addEventListener("change", () => {
+      state.filters.group = select.value;
+      applyFilters();
+    });
+  }
+
+  function applyTransform() {
+    viewport.setAttribute("transform", "translate(" + state.tx + " " + state.ty + ") scale(" + state.scale + ")");
+  }
+
+  function fitView(options = {}) {
+    const rect = svg.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const box = state.bbox;
+    const width = Math.max(1, box.x2 - box.x1);
+    const height = Math.max(1, box.y2 - box.y1);
+    let scale = clamp(Math.min(rect.width / width, rect.height / height), MIN_SCALE, 1.2);
+    if (options.readable && scale < READABLE_MIN_SCALE) scale = READABLE_MIN_SCALE;
+    state.scale = scale;
+    const scaledWidth = width * scale;
+    const scaledHeight = height * scale;
+    state.tx = scaledWidth <= rect.width
+      ? (rect.width - scaledWidth) / 2 - box.x1 * scale
+      : -box.x1 * scale;
+    state.ty = scaledHeight <= rect.height
+      ? (rect.height - scaledHeight) / 2 - box.y1 * scale
+      : -box.y1 * scale;
+    state.userInteracted = false;
+    state.lastFit = { w: rect.width, h: rect.height };
+    applyTransform();
+  }
+
+  function refitIfResized() {
+    if (state.userInteracted) return;
+    const rect = svg.getBoundingClientRect();
+    if (Math.abs(rect.width - state.lastFit.w) < 0.5 && Math.abs(rect.height - state.lastFit.h) < 0.5) return;
+    fitView({ readable: true });
+  }
+
+  function zoomBy(factor) {
+    const rect = svg.getBoundingClientRect();
+    const px = rect.width / 2;
+    const py = rect.height / 2;
+    const nextScale = clamp(state.scale * factor, MIN_SCALE, MAX_SCALE);
+    const ratio = nextScale / state.scale;
+    state.tx = px - (px - state.tx) * ratio;
+    state.ty = py - (py - state.ty) * ratio;
+    state.scale = nextScale;
+    state.userInteracted = true;
+    applyTransform();
+  }
+
+  function render(options = {}) {
+    const metrics = new Map(graph.nodes.map((node) => [node.id, nodeMetrics(node)]));
+    const layout = computeLayout(metrics);
+    state.layout = layout;
+    state.bbox = computeBBox(layout.positions);
+
+    groupsLayer.replaceChildren();
+    edgesLayer.replaceChildren();
+    nodesLayer.replaceChildren();
+
+    renderGroups(layout.positions);
+    renderEdges(layout.positions);
+    renderNodes(layout.positions);
+    applyFilters();
+    updateStats();
+
+    if (options.fit || !state.initialized) {
+      fitView({ readable: true });
+      state.initialized = true;
+      requestAnimationFrame(() => {
+        if (!state.userInteracted) fitView({ readable: true });
+      });
+    }
+    if (state.selected) updateHighlight();
+    renderPanel();
+  }
+
+  function download(filename, content, type) {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function exportSvg() {
+    const clone = svg.cloneNode(true);
+    clone.setAttribute("xmlns", NS);
+    const viewportClone = clone.querySelector("#viewport");
+    if (viewportClone) viewportClone.removeAttribute("transform");
+    const box = state.bbox;
+    const padding = 40;
+    clone.setAttribute("width", String(Math.ceil(box.x2 - box.x1 + padding * 2)));
+    clone.setAttribute("height", String(Math.ceil(box.y2 - box.y1 + padding * 2)));
+    clone.setAttribute("viewBox", [
+      box.x1 - padding,
+      box.y1 - padding,
+      box.x2 - box.x1 + padding * 2,
+      box.y2 - box.y1 + padding * 2
+    ].join(" "));
+    const xml = new XMLSerializer().serializeToString(clone);
+    download("navigation-map.svg", "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + xml, "image/svg+xml");
+  }
+
+  function exportJson() {
+    download("navigation-map.json", JSON.stringify(graph, null, 2), "application/json");
+  }
+
+  function toSvgPoint(event) {
+    const rect = svg.getBoundingClientRect();
+    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  }
+
+  svg.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    if (event.target.closest(".edge")) return;
+    const node = event.target.closest(".node");
+    const id = node && node.getAttribute("data-id");
+    const position = id && state.layout.positions.get(id);
+    state.drag = {
+      pointerId: event.pointerId, x: event.clientX, y: event.clientY,
+      tx: state.tx, ty: state.ty, id, node,
+      nodeX: position && position.x, nodeY: position && position.y, moved: false
+    };
+    svg.setPointerCapture(event.pointerId);
+  });
+
+  svg.addEventListener("pointermove", (event) => {
+    const drag = state.drag;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const dx = event.clientX - drag.x;
+    const dy = event.clientY - drag.y;
+    if (!drag.moved && Math.hypot(dx, dy) < 4) return;
+    drag.moved = true;
+    state.userInteracted = true;
+    if (drag.id) {
+      const position = state.layout.positions.get(drag.id);
+      position.x = drag.nodeX + dx / state.scale;
+      position.y = drag.nodeY + dy / state.scale;
+      state.moved.set(drag.id, { x: position.x, y: position.y });
+      drag.node.setAttribute("transform", "translate(" + position.x + " " + position.y + ")");
+      drag.node.classList.add("dragging");
+      updateConnectedEdges(drag.id, state.layout.positions);
+      updateGroups(state.layout.positions);
+      state.bbox = computeBBox(state.layout.positions);
+    } else {
+      svg.classList.add("dragging");
+      state.tx = drag.tx + dx;
+      state.ty = drag.ty + dy;
+      applyTransform();
+    }
+  });
+
+  function endDrag(event) {
+    const drag = state.drag;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    try {
+      svg.releasePointerCapture(event.pointerId);
+    } catch (error) {
+      // The pointer may already be released.
+    }
+    if (drag.node) drag.node.classList.remove("dragging");
+    if (drag.moved || drag.id) state.suppressClickUntil = Date.now() + 400;
+    if (drag.id && !drag.moved && event.type === "pointerup") selectNode(drag.id);
+    state.drag = null;
+    svg.classList.remove("dragging");
+  }
+
+  svg.addEventListener("pointerup", endDrag);
+  svg.addEventListener("pointercancel", endDrag);
+
+  svg.addEventListener("click", (event) => {
+    if (Date.now() < state.suppressClickUntil) return;
+    if (event.target.closest(".node, .edge")) return;
+    clearSelection();
+  });
+
+  svg.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    const point = toSvgPoint(event);
+    const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
+    const nextScale = clamp(state.scale * factor, MIN_SCALE, MAX_SCALE);
+    const ratio = nextScale / state.scale;
+    state.tx = point.x - (point.x - state.tx) * ratio;
+    state.ty = point.y - (point.y - state.ty) * ratio;
+    state.scale = nextScale;
+    state.userInteracted = true;
+    applyTransform();
+  }, { passive: false });
+
+  document.addEventListener("keydown", (event) => {
+    const tag = event.target && event.target.tagName;
+    if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+    if (event.key === "Escape") clearSelection();
+    else if (event.key === "+" || event.key === "=") zoomBy(1.2);
+    else if (event.key === "-") zoomBy(1 / 1.2);
+    else if (event.key === "0") fitView();
+  });
+
+  window.addEventListener("resize", refitIfResized);
+
+  if (typeof ResizeObserver !== "undefined") {
+    const observer = new ResizeObserver(refitIfResized);
+    observer.observe(svg.parentElement);
+  }
+
+  document.getElementById("search").addEventListener("input", (event) => {
+    state.filters.search = event.target.value;
+    applyFilters();
+  });
+
+  document.getElementById("only-services").addEventListener("change", (event) => {
+    state.filters.onlyServices = event.target.checked;
+    applyFilters();
+  });
+
+  for (const [id, key] of [
+    ["show-args", "showArgs"],
+    ["show-services", "showServices"],
+    ["show-apis", "showApis"],
+    ["show-edge-labels", "showEdgeLabels"],
+    ["show-groups", "showGroups"]
+  ]) {
+    document.getElementById(id).addEventListener("change", (event) => {
+      state.filters[key] = event.target.checked;
+      render();
+    });
+  }
+
+  document.getElementById("fit").addEventListener("click", fitView);
+  document.getElementById("reset-layout").addEventListener("click", () => {
+    state.moved.clear();
+    render({ fit: true });
+  });
+  document.getElementById("zoom-in").addEventListener("click", () => zoomBy(1.2));
+  document.getElementById("zoom-out").addEventListener("click", () => zoomBy(1 / 1.2));
+
+  const app = document.querySelector(".app");
+  const panelToggle = document.getElementById("toggle-panel");
+  panelToggle.addEventListener("click", () => {
+    const hidden = app.classList.toggle("panel-hidden");
+    panelToggle.setAttribute("aria-pressed", String(hidden));
+    panelToggle.textContent = hidden ? "Show panel" : "Panel";
+    panelToggle.title = hidden ? "Show details panel" : "Hide details panel";
+    requestAnimationFrame(() => fitView({ readable: true }));
+  });
+  document.getElementById("export-svg").addEventListener("click", exportSvg);
+  document.getElementById("export-json").addEventListener("click", exportJson);
+
+  if (!graph.nodes.length) {
+    empty.hidden = false;
+    svg.style.display = "none";
+    updateStats();
+    renderPanel();
+    window.__navMapLoaded = true;
+    return;
+  }
+
+  buildTypeFilters();
+  buildGroupFilter();
+  render({ fit: true });
+  window.__navMapLoaded = true;
+})();
+</script>
+<script>
+(() => {
+  if (window.__navMapLoaded) return;
+  const projectName = document.getElementById("project-name");
+  if (projectName) {
+    projectName.textContent = "Could not load the navigation graph";
+    projectName.style.color = "var(--danger)";
+  }
+  const empty = document.getElementById("empty");
+  if (empty) {
+    empty.hidden = false;
+    const heading = empty.querySelector("h2");
+    const paragraph = empty.querySelector("p");
+    if (heading) heading.textContent = "Could not render the graph";
+    if (paragraph) paragraph.textContent = "The page script did not finish. Open the browser console for the error, then copy the template again and replace only the JSON payload.";
+  }
+})();
+</script>
+</body>
+</html>
